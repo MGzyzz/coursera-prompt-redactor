@@ -2,9 +2,12 @@ import { useEffect, useMemo, useState } from 'react'
 import ActionBar from './components/ActionBar'
 import CopyResultButton from './components/CopyResultButton'
 import OptionsPanel from './components/OptionsPanel'
+import RemovalSuggestions from './components/RemovalSuggestions'
 import TextAreaCard from './components/TextAreaCard'
 import ThemeToggle from './components/ThemeToggle'
+import { STORAGE_KEYS } from './constants/storageKeys'
 import { useTheme } from './hooks/useTheme'
+import { buildRemovalSuggestions } from './utils/removalSuggestions'
 import { removeRequestedText } from './utils/textProcessor'
 
 function App() {
@@ -15,7 +18,13 @@ function App() {
   const [caseSensitive, setCaseSensitive] = useState(false)
   const [removeAllOccurrences, setRemoveAllOccurrences] = useState(true)
   const [copyStatus, setCopyStatus] = useState('idle')
+  const [chatGptChatId, setChatGptChatId] = useState(() => {
+    if (typeof window === 'undefined') return ''
+    return window.localStorage.getItem(STORAGE_KEYS.chatGptChatId) ?? ''
+  })
   const { theme, toggleTheme } = useTheme()
+
+  const suggestions = useMemo(() => buildRemovalSuggestions(sourceText), [sourceText])
 
   const { resultText, matchesFound, matchesRemoved } = useMemo(
     () =>
@@ -34,6 +43,11 @@ function App() {
     const timeoutId = window.setTimeout(() => setCopyStatus('idle'), 1800)
     return () => window.clearTimeout(timeoutId)
   }, [copyStatus])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    window.localStorage.setItem(STORAGE_KEYS.chatGptChatId, chatGptChatId)
+  }, [chatGptChatId])
 
   const handleClear = () => {
     setSourceText('')
@@ -109,10 +123,19 @@ function App() {
           />
         </section>
 
+        <RemovalSuggestions
+          suggestions={suggestions}
+          activeValue={textToRemove}
+          onSelect={setTextToRemove}
+        />
+
         <section className="grid gap-4 xl:grid-cols-[1.4fr,1fr]">
           <ActionBar
             sourceLength={sourceText.length}
             resultLength={resultText.length}
+            resultText={resultText}
+            chatGptChatId={chatGptChatId}
+            onChatGptChatIdChange={setChatGptChatId}
             matchesFound={matchesFound}
             matchesRemoved={matchesRemoved}
             onClear={handleClear}
