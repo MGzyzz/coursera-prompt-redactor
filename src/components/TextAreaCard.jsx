@@ -9,6 +9,7 @@ function TextAreaCard({
   rows = 12,
   headerAction = null,
   textareaAction = null,
+  footerAction = null,
 }) {
   return (
     <article className="group rounded-3xl border border-[var(--border-subtle)] bg-[var(--panel-bg)]/90 p-4 shadow-[var(--shadow-soft)] backdrop-blur-xl sm:p-5">
@@ -40,6 +41,8 @@ function TextAreaCard({
           </div>
         ) : null}
       </div>
+
+      {footerAction ? <div className="mt-3">{footerAction}</div> : null}
     </article>
   )
 }

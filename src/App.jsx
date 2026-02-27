@@ -3,12 +3,35 @@ import ActionBar from './components/ActionBar'
 import CopyResultButton from './components/CopyResultButton'
 import OptionsPanel from './components/OptionsPanel'
 import RemovalSuggestions from './components/RemovalSuggestions'
+import RemoveTextSlots from './components/RemoveTextSlots'
 import TextAreaCard from './components/TextAreaCard'
 import ThemeToggle from './components/ThemeToggle'
 import { STORAGE_KEYS } from './constants/storageKeys'
 import { useTheme } from './hooks/useTheme'
 import { buildRemovalSuggestions } from './utils/removalSuggestions'
 import { removeRequestedText } from './utils/textProcessor'
+
+const EMPTY_REMOVE_TEXT_SLOTS = ['', '']
+
+const getInitialRemoveTextSlots = () => {
+  if (typeof window === 'undefined') return EMPTY_REMOVE_TEXT_SLOTS
+
+  const storedValue = window.localStorage.getItem(STORAGE_KEYS.removeTextSlots)
+
+  if (!storedValue) return EMPTY_REMOVE_TEXT_SLOTS
+
+  try {
+    const parsed = JSON.parse(storedValue)
+
+    if (!Array.isArray(parsed)) {
+      return EMPTY_REMOVE_TEXT_SLOTS
+    }
+
+    return [String(parsed[0] ?? ''), String(parsed[1] ?? '')]
+  } catch {
+    return EMPTY_REMOVE_TEXT_SLOTS
+  }
+}
 
 function App() {
   const [sourceText, setSourceText] = useState(
@@ -18,6 +41,7 @@ function App() {
   const [caseSensitive, setCaseSensitive] = useState(false)
   const [removeAllOccurrences, setRemoveAllOccurrences] = useState(true)
   const [copyStatus, setCopyStatus] = useState('idle')
+  const [removeTextSlots, setRemoveTextSlots] = useState(getInitialRemoveTextSlots)
   const [chatGptChatId, setChatGptChatId] = useState(() => {
     if (typeof window === 'undefined') return ''
     return window.localStorage.getItem(STORAGE_KEYS.chatGptChatId) ?? ''
@@ -49,10 +73,25 @@ function App() {
     window.localStorage.setItem(STORAGE_KEYS.chatGptChatId, chatGptChatId)
   }, [chatGptChatId])
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    window.localStorage.setItem(STORAGE_KEYS.removeTextSlots, JSON.stringify(removeTextSlots))
+  }, [removeTextSlots])
+
   const handleClear = () => {
     setSourceText('')
     setTextToRemove('')
     setCopyStatus('idle')
+  }
+
+  const handleSaveRemoveSlot = (slotIndex) => {
+    setRemoveTextSlots((previousSlots) =>
+      previousSlots.map((slotValue, index) => (index === slotIndex ? textToRemove : slotValue)),
+    )
+  }
+
+  const handleUseRemoveSlot = (slotIndex) => {
+    setTextToRemove(removeTextSlots[slotIndex] ?? '')
   }
 
   const handleCopyResult = async () => {
@@ -111,6 +150,13 @@ function App() {
             placeholder="Введите часть текста для удаления..."
             rows={6}
             onChange={setTextToRemove}
+            footerAction={
+              <RemoveTextSlots
+                slots={removeTextSlots}
+                onSaveSlot={handleSaveRemoveSlot}
+                onUseSlot={handleUseRemoveSlot}
+              />
+            }
           />
           <TextAreaCard
             id="result-text"
